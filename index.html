@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 جدول گلزنان حرفه‌ای</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+<style>
+body{
+ margin:0;
+ font-family:tahoma;
+ background:#0f2027;
+ color:#fff;
+ background-image: url(Jowhareh_galleries_5_poster_c46d2065-1635-4bd9-9b62-811351824ddf.jpeg);
+}
+.container{max-width:1000px;margin:auto;padding:20px;}
+.card{
+ background:#1c2833;
+ padding:20px;
+ border-radius:15px;
+}
+button{
+ padding:6px 12px;
+ border:none;
+ border-radius:6px;
+ cursor:pointer;
+ margin:3px;
+ font-weight:bold;
+}
+.add{background:#4caf50;color:#fff}
+.sub{background:#f44336;color:#fff}
+.delete{background:#9c27b0;color:#fff}
+.adminBtn{background:#2196f3;color:#fff}
+.logoutBtn{background:#ff5722;color:#fff}
+
+input{
+ padding:6px;
+ border-radius:6px;
+ border:none;
+ margin:5px;
+}
+
+table{
+ width:100%;
+ border-collapse:collapse;
+ margin-top:15px;
+}
+th,td{
+ padding:10px;
+ text-align:center;
+}
+.top1{background:gold;color:black;font-weight:bold}
+.hidden{display:none}
+canvas{margin-top:30px}
+#history{max-height:120px;overflow:auto;font-size:12px;margin-top:15px}
+.adminPanel{
+ margin-top:15px;
+ padding:10px;
+ background:#243746;
+ border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<div class="card">
+
+<h1>🏆 جدول گلزنان</h1>
+
+<input type="text" id="search" placeholder="جستجو...">
+
+<button class="adminBtn" onclick="loginAdmin()">ورود مدیریت</button>
+<button class="logoutBtn" onclick="logoutAdmin()">خروج</button>
+
+<!-- پنل اضافه کردن -->
+<div id="adminPanel" class="adminPanel hidden">
+<h3>➕ افزودن بازیکن</h3>
+<input type="text" id="newName" placeholder="نام بازیکن">
+<input type="number" id="newGoals" placeholder="تعداد گل">
+<button onclick="addPlayer()">افزودن</button>
+</div>
+
+<table>
+<thead>
+<tr>
+<th>رتبه</th>
+<th>نام</th>
+<th>گل</th>
+<th id="manageHeader" class="hidden">مدیریت</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<canvas id="chart"></canvas>
+
+<h3>📜 تاریخچه</h3>
+<div id="history"></div>
+
+</div>
+</div>
+
+<script>
+let players = JSON.parse(localStorage.getItem("players")) || [];
+let historyLog = JSON.parse(localStorage.getItem("history")) || [];
+let isAdmin = localStorage.getItem("isAdmin") === "true";
+let chart;
+let lastLeader=null;
+
+const ctx = document.getElementById("chart").getContext("2d");
+
+function save(){
+ localStorage.setItem("players",JSON.stringify(players));
+ localStorage.setItem("history",JSON.stringify(historyLog));
+ localStorage.setItem("isAdmin",isAdmin);
+}
+
+function render(){
+ let search = document.getElementById("search").value.toLowerCase();
+ let sorted = [...players].sort((a,b)=>b.goals-a.goals);
+
+ let body = document.getElementById("tableBody");
+ body.innerHTML="";
+
+ sorted
+ .filter(p=>p.name.toLowerCase().includes(search))
+ .forEach((p,i)=>{
+  let tr=document.createElement("tr");
+  if(i===0) tr.classList.add("top1");
+
+  tr.innerHTML=`
+   <td>${i+1}</td>
+   <td>${p.name}</td>
+   <td>${p.goals}</td>
+   ${isAdmin?`
+   <td>
+    <button class="add" onclick="updateGoal('${p.name}',1)">+</button>
+    <button class="sub" onclick="updateGoal('${p.name}',-1)">-</button>
+    <button class="delete" onclick="deletePlayer('${p.name}')">حذف</button>
+   </td>`:""}
+  `;
+  body.appendChild(tr);
+ });
+
+ document.getElementById("manageHeader")
+   .classList.toggle("hidden",!isAdmin);
+
+ document.getElementById("adminPanel")
+   .classList.toggle("hidden",!isAdmin);
+
+ updateChart(sorted);
+ renderHistory();
+ animate();
+
+ if(sorted[0] && sorted[0].name!==lastLeader){
+   confetti();
+   lastLeader=sorted[0].name;
+ }
+}
+
+function addPlayer(){
+ if(!isAdmin) return;
+
+ let name=document.getElementById("newName").value.trim();
+ let goals=parseInt(document.getElementById("newGoals").value);
+
+ if(!name || isNaN(goals)) return alert("اطلاعات کامل نیست");
+
+ if(players.some(p=>p.name===name))
+   return alert("این بازیکن قبلاً ثبت شده");
+
+ players.push({name,goals});
+ historyLog.unshift(`${name} اضافه شد`);
+ save();
+ render();
+
+ document.getElementById("newName").value="";
+ document.getElementById("newGoals").value="";
+}
+
+function updateGoal(name,val){
+ if(!isAdmin) return;
+ let p=players.find(x=>x.name===name);
+ p.goals+=val;
+ if(p.goals<0)p.goals=0;
+ historyLog.unshift(`${p.name} تغییر گل`);
+ save();
+ render();
+}
+
+function deletePlayer(name){
+ if(!isAdmin) return;
+ players=players.filter(p=>p.name!==name);
+ historyLog.unshift(`${name} حذف شد`);
+ save();
+ render();
+}
+
+function updateChart(sorted){
+ if(chart) chart.destroy();
+ chart=new Chart(ctx,{
+  data:{
+   labels:sorted.map(p=>p.name),
+   datasets:[
+    {type:'bar',label:'گل',data:sorted.map(p=>p.goals)},
+    {type:'line',label:'روند',data:sorted.map(p=>p.goals)}
+   ]
+  }
+ });
+}
+
+function renderHistory(){
+ let container = document.getElementById("history");
+
+ container.innerHTML = historyLog
+  .slice(0,20)
+  .map((h,index)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+      <span>${h}</span>
+      ${isAdmin ? `<button onclick="deleteHistory(${index})" 
+        style="background:red;color:white;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;">❌</button>` : ""}
+    </div>
+  `).join("");
+}
+
+function animate(){
+ gsap.from("tbody tr",{y:20,opacity:0,stagger:.05});
+}
+
+function loginAdmin(){
+ let pass=prompt("رمز مدیریت:");
+ if(pass && pass.trim()==="Amir1389@"){
+  isAdmin=true;
+  save();
+  render();
+ }else{
+  alert("رمز اشتباه");
+ }
+}
+
+function logoutAdmin(){
+ isAdmin=false;
+ save();
+ render();
+}
+
+document.getElementById("search").addEventListener("input",render);
+
+render();
+
+function deleteHistory(index){
+ if(!isAdmin) return;
+
+ historyLog.splice(index,1);
+ save();
+ render();
+}
+
+</script>
+</body>
+</html>
