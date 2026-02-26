@@ -2,11 +2,15 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>جدول گلزنان</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>جدول گلزنان حرفه‌ای</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="ChatGPT Image Feb 26, 2026, 04_20_16 PM.png">
+<meta name="theme-color" content="#0f172a">
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<link rel="icon" href="ChatGPT Image Feb 26, 2026, 04_20_16 PM.png">
+
 <style>
 body{
   margin:0;
@@ -17,29 +21,33 @@ body{
 
 .container{
   width:100%;
-  padding:20px;
+  max-width:1000px;
+  margin:auto;
+  padding:10px;
 }
 
 h1{
   text-align:center;
-  margin-bottom:20px;
+  margin-bottom:10px;
+  font-size:1.5rem;
 }
 
 .table-wrapper{
   width:100%;
-  overflow-x:auto;
+  overflow-x:hidden; /* اسکرول افقی حذف شد */
 }
 
 table{
   width:100%;
   border-collapse:collapse;
   background:#1e293b;
-  min-width:900px;
+  table-layout: fixed; /* ستون‌ها برابر و مرتب */
 }
 
 th,td{
-  padding:12px;
+  padding:6px 4px;
   text-align:center;
+  font-size:0.85rem;
 }
 
 th{
@@ -52,30 +60,45 @@ tr{
 }
 
 /* نفرات اول تا سوم */
-.top1{
-  background:gold;
-  color:black;
-  font-weight:bold;
-}
-
-.top2{
-  background:linear-gradient(90deg,#f5f7fa,#c3cfe2);
-  color:black;
-  font-weight:bold;
-}
-
-.top3{
-  background:#cd7f32;
-  font-weight:bold;
-}
+.top1{background:gold;color:black;font-weight:bold}
+.top2{background:linear-gradient(90deg,#f5f7fa,#c3cfe2);color:black;font-weight:bold}
+.top3{background:#cd7f32;font-weight:bold}
 
 .badge{
   background:#2563eb;
-  padding:4px 10px;
-  border-radius:15px;
-  font-size:12px;
+  padding:2px 6px;
+  border-radius:12px;
+  font-size:0.75rem;
+  color: white;
 }
 
+.goalCell{
+  position:relative;
+  overflow:hidden;
+  height:1.2em;
+}
+
+.goalNumber{
+  position:absolute;
+  width:100%;
+  left:0;
+  text-align:center;
+  top:0;
+  font-weight:bold;
+}
+
+/* ریسپانسیو موبایل */
+@media(max-width:600px){
+  th,td{
+    padding:4px 2px;
+    font-size:0.75rem;
+  }
+  .badge{
+    padding:2px 4px;
+    font-size:0.65rem;
+  }
+  h1{font-size:1.2rem}
+}
 </style>
 </head>
 <body>
@@ -96,7 +119,6 @@ tr{
 <tbody id="tableBody"></tbody>
 </table>
 </div>
-
 </div>
 
 <script>
@@ -121,27 +143,29 @@ function renderTable(){
   players.sort((a,b)=>b.goals-a.goals);
   let body=document.getElementById("tableBody");
   body.innerHTML="";
-
   players.forEach((p,i)=>{
     let tr=document.createElement("tr");
-
     if(i==0) tr.classList.add("top1");
     if(i==1) tr.classList.add("top2");
     if(i==2) tr.classList.add("top3");
-
     tr.innerHTML=`
       <td>${i+1}</td>
       <td>${p.name}</td>
       <td><span class="badge">${p.team}</span></td>
-      <td class="goalCell">${p.goals}</td>
+      <td class="goalCell"><span class="goalNumber">${p.goals}</span></td>
     `;
-
     body.appendChild(tr);
   });
 }
 
 renderTable();
 
+// ثبت Service Worker برای PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./service-worker.js')
+  .then(()=>console.log('Service Worker ثبت شد'))
+  .catch(err=>console.log('خطا در ثبت SW:', err));
+}
 </script>
 
 </body>
